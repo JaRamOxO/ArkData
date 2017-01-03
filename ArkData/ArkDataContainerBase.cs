@@ -48,13 +48,46 @@ namespace ArkData
 
                 for (var i = 0; i < Players.Count; i++)
                 {
-                    var online_player = online.SingleOrDefault(p => p.Name == Players[i].SteamName);
-                    if (online_player != null)
-                        Players[i].Online = true;
+                    //ORGINAL POS
+                    //FIX FOR STEAMNAMES LONGER THAN 16 CHAR, SHOW OFFLINE 
+                    if (Players[i].SteamName.Length >= 16)
+                    {
+                        //System.Windows.Forms.MessageBox.Show(Players[i].SteamName);
+                        //var online_player = online.SingleOrDefault(p => p.Name == Players[i].SteamName);
+                        foreach (var on in online)
+                        {
+                            if (on.Name.Length >= 16)
+                            {
+                                //var online_player = online.SingleOrDefault(p => Players[i].SteamName.StartsWith(p.Name.Substring(0, 16)));
+                                if (Players[i].SteamName.StartsWith(on.Name.Substring(0, 16)))
+                                {
+                                    Players[i].Online = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    Players[i].Online = false;
+                                }
+                            }
+                        }
+                    }
                     else
-                        Players[i].Online = false;
+                    {
+                        //ORGINAL START
+                        var online_player = online.SingleOrDefault(p => p.Name == Players[i].SteamName);
+                        if (online_player != null)
+                        {
+                            Players[i].Online = true;
+                        }
+                        else
+                        {
+                            Players[i].Online = false;
+                        }
+                        //ORGINAL STOPP
+                    }
                 }
-            } catch(SSQLServerException ex)
+            }
+            catch (SSQLServerException ex)
             {
                 throw new ServerException("The connection to the ARK server failed. Please check the configured IP address and port.");
             }

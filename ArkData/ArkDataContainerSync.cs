@@ -17,33 +17,59 @@ namespace ArkData
         /// <param name="apiKey">The Steam API key</param>
         public void LoadSteam(string apiKey)
         {
-            var builder = new StringBuilder();
-            for (var i = 0; i < Players.Count; i++)
-                builder.Append(Players[i].SteamId + ",");
+            //FIX FOR STEAM API RETURNS ERROR ON BULK STEAMIDS OVER 430 IDS
+            //NOW REQUEST 100 STEAMIDS AT A TIME
+            double d_antPlayers = Players.Count;
+            double antLoops = System.Math.Ceiling(d_antPlayers / 100.0);
+            int antPlayers = Players.Count;
+            int posTeller = 0;
 
-            using (var client = new HttpClient())
+            for (var ant = 1; ant <= antLoops; ant++)
             {
-                client.BaseAddress = new System.Uri("https://api.steampowered.com/");
-                client.DefaultRequestHeaders.Accept.Clear();
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-                var response = client.GetAsync(string.Format("ISteamUser/GetPlayerSummaries/v0002/?key={0}&steamids={1}", apiKey, builder.ToString())).Result;
-                if (response.IsSuccessStatusCode)
-                    using (var reader = new StreamReader(response.Content.ReadAsStreamAsync().Result))
-                    {
-                        LinkSteamProfiles(reader.ReadToEnd());
-                    }
+                var range = 0;
+                if (ant == antLoops)
+                {
+                    range = antPlayers - ((ant - 1) * 100);
+                }
                 else
-                    throw new System.Net.WebException("The Steam API request was unsuccessful. Are you using a valid key?");
+                {
+                    range = 100;
+                }
 
-                response = client.GetAsync(string.Format("ISteamUser/GetPlayerBans/v1/?key={0}&steamids={1}", apiKey, builder.ToString())).Result;
-                if (response.IsSuccessStatusCode)
-                    using (var reader = new StreamReader(response.Content.ReadAsStreamAsync().Result))
-                    {
-                        LinkSteamBans(reader.ReadToEnd());
-                    }
-                else
-                    throw new System.Net.WebException("The Steam API request was unsuccessful. Are you using a valid key?");
+                var builder = new StringBuilder();
+                for (var i = 0; i < range; i++)
+                {
+                    builder.Append(Players[posTeller].SteamId + ",");
+                    posTeller++;
+                }
+
+                //System.Windows.Forms.MessageBox.Show("Range: " + range + "\n" + builder.ToString());
+                using (var client = new HttpClient())
+                {
+                    client.BaseAddress = new System.Uri("https://api.steampowered.com/");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    var response = client.GetAsync(
+                        $"ISteamUser/GetPlayerSummaries/v0002/?key={apiKey}&steamids={builder.ToString()}").Result;
+                    if (response.IsSuccessStatusCode)
+                        using (var reader = new StreamReader(response.Content.ReadAsStreamAsync().Result))
+                        {
+                            LinkSteamProfiles(reader.ReadToEnd());
+                        }
+                    else
+                        throw new System.Net.WebException("(LinkSteamProfiles(" + Players.Count + " players))The Steam API request was unsuccessful. Are you using a valid key?");
+
+                    response = client.GetAsync(
+                        $"ISteamUser/GetPlayerBans/v1/?key={apiKey}&steamids={builder.ToString()}").Result;
+                    if (response.IsSuccessStatusCode)
+                        using (var reader = new StreamReader(response.Content.ReadAsStreamAsync().Result))
+                        {
+                            LinkSteamBans(reader.ReadToEnd());
+                        }
+                    else
+                        throw new System.Net.WebException("(LinkSteamBans)The Steam API request was unsuccessful. Are you using a valid key?");
+                }
             }
             SteamLoaded = true;
         }
